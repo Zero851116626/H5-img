@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        body,html,ul, li,p{
+            margin:0;
+            padding:0;
+        }
+        ul,li{
+            list-style: none;
+        }
+        .wrap{
+            width:500px;
+            height:600px;
+            margin:50px auto;
+            background-color: pink;
+        }
+        .wrap .set{
+            float:left;
+            width:50%;
+            height:100%;
+            background-color: yellow;
+        }
+        .wrap .set p{
+            height:10%;
+            margin:5px auto;
+            text-align: center;
+        }
+        .wrap ul{
+            float:left;
+            width:25%;
+            height:100%;
+        }
+        .wrap ul p{
+            text-align: center;
+            height:25px;
+            line-height:30px;
+        }
+        .wrap ul li{
+            float:left;
+            width:100%;
+            height:115px;
+            background-color: skyblue;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <p>这是一个简易的照片信息采集器</p>
+        <p>将浏览器外的图片拖入黄色区域，粉色区域会保存照片并且读取照片名，照片大小信息</p>
+        <p>点击已经保存的图片可以删除</p>
+        <p>采用面向对象的方式编程，功能易拓展，后续可以添加读取更多文件的能力</p>
+    </div>
+    <div class="wrap">
+        <div class="set">
+            <p>请在此处放入图片</p>
+        </div>
+        <ul class="list-photo">
+            <p>显示列表</p>
+        </ul>
+        <ul class="list-news">
+            <p>消息列表</p>
+        </ul>
+    </div>
+    <script>
+        //面向对象编程法
+        /* 接口：
+        * wrap：整体区域
+        * set：放入图片的区域
+        * list-photo：照片显示区域
+        * list-news：消息显示区域
+        * */
+        //查询序号的方法
+        function indexofarr(arr,value){
+            for(let i = 0,l = arr.length;i<l;i++){
+                if(arr[i] === value)return i;
+                else {
+                    return -1;
+                }
+            }
+        }
+
+        class ReadPicture{
+            constructor(main,set,ph,info){
+                //执行初始化，获取对应的元素
+                this.picList = [];
+                this.infoList = [];
+                this.init(main,set,ph,info);
+                this.stopDefault();
+                this.binddrag();
+            }
+            //初始化操作，将目标全部获取
+            init(str,set,ph,info){
+                //获取操作区域
+                this.body = document.querySelector("body");
+                this.wrap = document.querySelector(str);
+                this.set = document.querySelector(set);
+                this.ph = document.querySelector(ph);
+                this.info = document.querySelector(info);
+            }
+            //阻止所有的拖动默认事件
+            stopDefault(){
+                this.body.ondragover = function(e){
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                };
+                this.body.ondrop = function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+            }
+            //添加目标地区的拖动事件
+            binddrag(){
+                //这里用function同样会出现this指向问题
+                this.set.ondragenter = ()=>{
+                    this.set.innerHTML = `<p>放在这里就可以啦！！</p>`;
+                };
+
+                //不需要下面这句话，因为取消默认事件已经在上面做过啦
+                // this.set.ondragover = function(){}
+
+                //移出时
+                this.set.ondragleave = ()=>{
+                    this.set.innerHTML = `<p>请在此处放入图片</p>`;
+                };
+                //移入后的操作
+                this.set.ondrop = (e)=>{
+                    //调用处理文件的方法
+                    this.dealfile(e);
+                }
+            }
+
+
+            //处理文件
+            dealfile(e){
+                //数据转化
+                const dt = e.dataTransfer;
+                //取到刚放进来的文件
+                const oFile = dt.files[0];
+                //读取文件
+                const file = new FileReader();
+                //将文件转化为数据链接的方式
+                file.readAsDataURL(oFile);
+                //文件处理结束后执行
+                file.onload = ()=>{
+                    // console.log(file.result);
+                    //如果是图片文件
+                    if(/image/.test(file.result)){
+                        this.dealimages(file.result,oFile);
+                    }
+                }
+            }
+            //如果是图片文件
+            dealimages (con,oFile){
+                //新建图片对象，并设置一些属性
+                const img = new Image();
+                img.src = con;
+                img.width = 100;
+                img.height = Math.max(115);
+                //图片加载完成后执行
+                img.onload =()=>{
+                    //图片列表
+                    let picli = document.createElement("li");
+                    picli.appendChild(img);
+                    //把这个li放进数组里，不要的时候直接删除数组
+                    this.picList.push(picli);
+
+                    //信息列表
+                    let name = oFile.name;
+                    let size = Math.floor(oFile.size*1000/1024/1024)/1000;
+                    let infoli = document.createElement("li");
+                    infoli.innerHTML = `<p>${name}</p><p>${size}Mb</p>` ;
+                    this.infoList.push(infoli);
+                    //渲染列表
+                    this.render();
+                    //删除按钮，肯定得有东西才能删
+                    this.delete();
+                }
+            }
+            //点击删除对应文件
+            delete(){
+                this.picList.forEach((v,i)=>{
+                    v.onclick = ()=>{
+                        //删除这个v在数组中的序号
+                        let n =indexofarr(this.picList,v);
+                        // let n = this.picList.index(v);
+                        this.picList.splice(n,1);
+                        this.infoList.splice(n,1);
+                        this.render();
+                    }
+                })
+            }
+            //渲染列表
+            render(){
+                //每次执行渲染任务，都是刷新列表
+                //先清除所有子节点，再按照数组添加节点
+                this.ph.innerHTML = `<p>显示列表</p>`;
+                this.info.innerHTML = `<p>消息列表</p>`;
+
+                this.picList.forEach((v,i)=>{
+                    //渲染图片列表
+                    this.ph.appendChild(this.picList[i]);
+                    //渲染信息列表
+                    this.info.appendChild(this.infoList[i]);
+                });
+
+            }
+        }
+
+        let box = new ReadPicture(".wrap",".set",".list-photo",".list-news");
+    </script>
+</body>
+</html>
